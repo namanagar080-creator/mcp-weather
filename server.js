@@ -229,6 +229,170 @@ server.registerTool(
   },
 );
 
+server.registerTool(
+  "get_expenses",
+  {
+    description:
+      "Fetch all expenses and return them as formatted text.",
+    inputSchema: {},
+  },
+  async () => {
+    const response = await fetch("http://localhost:8080/expenses");
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch expenses: ${response.status}`);
+    }
+
+    const expenses = await response.json();
+
+    const text = Array.isArray(expenses) && expenses.length > 0
+      ? expenses
+          .map((expense, index) => {
+            const fields = Object.entries(expense)
+              .map(([key, value]) => `${key}: ${value}`)
+              .join("\n");
+
+            return `Expense ${index + 1}\n${fields}`;
+          })
+          .join("\n\n")
+      : "No expenses found.";
+
+    return {
+      content: [
+        {
+          type: "text",
+          text,
+        },
+      ],
+    };
+  },
+);
+
+server.registerTool(
+  "update_expense",
+  {
+    description: "Update an expense by ID and return the updated expense info.",
+    inputSchema: {
+      id: z.number().describe("The ID of the expense to update."),
+      title: z.string().describe("The updated title for the expense."),
+      amount: z.number().describe("The updated amount for the expense."),
+    },
+  },
+  async ({ id, title, amount }) => {
+    const response = await fetch(`http://localhost:8080/expenses/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title,
+        amount,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to update expense ${id}: ${response.status}`);
+    }
+
+    const updatedExpenseSchema = z.object({
+      id: z.number(),
+      title: z.string(),
+      amount: z.number(),
+    });
+
+    const updatedExpense = updatedExpenseSchema.parse(await response.json());
+
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            "Successfully updated expense.\n" +
+            `id: ${updatedExpense.id}\n` +
+            `title: ${updatedExpense.title}\n` +
+            `amount: ${updatedExpense.amount}`,
+        },
+      ],
+    };
+  },
+);
+
+server.registerTool(
+  "delete_expense",
+  {
+    description: "Delete an expense by ID and return a success message.",
+    inputSchema: {
+      id: z.number().describe("The ID of the expense to delete."),
+    },
+  },
+  async ({ id }) => {
+    const response = await fetch(`http://localhost:8080/expenses/${id}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete expense ${id}: ${response.status}`);
+    }
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Successfully deleted expense ${id}.`,
+        },
+      ],
+    };
+  },
+);
+
+server.registerTool(
+  "create_expense",
+  {
+    description: "Create a new expense and return the created expense details.",
+    inputSchema: {
+      title: z.string().describe("The title of the expense."),
+      amount: z.number().describe("The amount of the expense."),
+    },
+  },
+  async ({ title, amount }) => {
+    const response = await fetch("http://localhost:8080/expenses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title,
+        amount,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to create expense: ${response.status}`);
+    }
+
+    const createdExpenseSchema = z.object({
+      id: z.number(),
+      title: z.string(),
+      amount: z.number(),
+    });
+
+    const createdExpense = createdExpenseSchema.parse(await response.json());
+
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            "Successfully created expense.\n" +
+            `id: ${createdExpense.id}\n` +
+            `title: ${createdExpense.title}\n` +
+            `amount: ${createdExpense.amount}`,
+        },
+      ],
+    };
+  },
+);
+
 const transport = new StdioServerTransport();
 
 try {
