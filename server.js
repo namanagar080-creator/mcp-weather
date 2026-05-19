@@ -124,6 +124,55 @@ server.registerTool(
   },
 );
 
+server.registerTool(
+  "read_file",
+  {
+    description: "Read a local file and return its contents as text.",
+    inputSchema: {
+      path: z.string().describe("The path of the file to read."),
+    },
+  },
+  async ({ path }) => {
+    const { readFile } = await import("fs/promises");
+    const text = await readFile(path, "utf8");
+
+    return {
+      content: [
+        {
+          type: "text",
+          text,
+        },
+      ],
+    };
+  },
+);
+
+server.registerTool(
+  "list_files",
+  {
+    description: "List all files and folders in a local directory as text.",
+    inputSchema: {
+      path: z.string().describe("The path of the directory to list."),
+    },
+  },
+  async ({ path }) => {
+    const { readdir } = await import("fs/promises");
+    const entries = await readdir(path, { withFileTypes: true });
+    const text = entries
+      .map((entry) => `${entry.isDirectory() ? "[DIR]" : "[FILE]"} ${entry.name}`)
+      .join("\n");
+
+    return {
+      content: [
+        {
+          type: "text",
+          text,
+        },
+      ],
+    };
+  },
+);
+
 const transport = new StdioServerTransport();
 
 try {
