@@ -173,6 +173,62 @@ server.registerTool(
   },
 );
 
+server.registerTool(
+  "write_file",
+  {
+    description: "Write text content to a local file using UTF-8 encoding.",
+    inputSchema: {
+      path: z.string().describe("The path of the file to write."),
+      content: z.string().describe("The UTF-8 text content to write."),
+    },
+  },
+  async ({ path, content }) => {
+    const { writeFile } = await import("fs/promises");
+    await writeFile(path, content, "utf8");
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Successfully wrote file: ${path}`,
+        },
+      ],
+    };
+  },
+);
+
+server.registerTool(
+  "delete_file",
+  {
+    description: "Delete a local file and return a success message.",
+    inputSchema: {
+      path: z.string().describe("The path of the file to delete."),
+    },
+  },
+  async ({ path }) => {
+    const { unlink } = await import("fs/promises");
+
+    try {
+      await unlink(path);
+    } catch (error) {
+      if (error?.code === "ENOENT") {
+        throw new Error(`File does not exist: ${path}`);
+      }
+
+      throw error;
+    }
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Successfully deleted file: ${path}`,
+        },
+      ],
+    };
+  },
+);
+
 const transport = new StdioServerTransport();
 
 try {
